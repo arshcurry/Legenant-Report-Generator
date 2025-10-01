@@ -1,12 +1,15 @@
 import streamlit as st
 from openpyxl import load_workbook
 from openpyxl.styles import Font
+from openpyxl.utils import get_column_letter
 import io
 
 st.set_page_config(page_title="Custom Report Processor", layout="wide")
 st.title("📑 Custom Report Processor")
 
 uploaded_file = st.file_uploader("Upload your Excel file (Custom Report.xlsx)", type=["xlsx"])
+
+
 
 if uploaded_file is not None:
     try:
@@ -74,6 +77,12 @@ if uploaded_file is not None:
                 unit_legal.append(value)
 
         print("unit_legal (initial):", unit_legal)
+
+        ws = Sample_sheet
+        for col in range(0, len(unit_legal)):
+            char = chr(65)  # 'A'
+            ws[f"{char}{col + 3}"] = AR_Aging_sheet["A7"].value
+
 
         # ----------------------------
         # THIS REPRESENTS THE LIST HAVING ALL THE VALUES AVAILABLE IN THE UNIT COLUMN IN THE RENT SHEET
@@ -584,7 +593,7 @@ if uploaded_file is not None:
         max_consecutive_blank = 100
 
         # Iterate starting from row 7 and columns F->R
-        for row in sheet.iter_rows(min_row=7, min_col=6, max_col=18):  # F to R (max_col covers last needed)
+        for row in sheet.iter_rows(min_row=8, min_col=6, max_col=18):  # F to R (max_col covers last needed)
             # Map columns
             f_cell = row[0]   # F -> book_number
             g_cell = row[1]   # G -> legal_type
@@ -615,7 +624,7 @@ if uploaded_file is not None:
             legal_notes.append(r_cell.value if not r_cell.font.bold else "")
 
         # --- Paste values in Sample Report ---
-        row_start = 2
+        row_start = 3
         for i in range(len(book_number)):
             ws_sample[f"L{row_start + i}"] = book_number[i]
             ws_sample[f"M{row_start + i}"] = legal_type[i]
@@ -624,6 +633,28 @@ if uploaded_file is not None:
             ws_sample[f"P{row_start + i}"] = due_date[i]
             ws_sample[f"Q{row_start + i}"] = current_alert[i]
             ws_sample[f"R{row_start + i}"] = legal_notes[i]
+
+
+# Auto-adjust column widths for Sample_sheet safely
+        for col in Sample_sheet.iter_cols():
+            max_length = 0
+            col_letter = get_column_letter(col[0].column)  # Get column letter
+
+            for cell in col:
+                try:
+                    if cell.value is not None:
+                # Only measure actual text length, ignore formulas/styles
+                        cell_length = len(str(cell.value))
+                        if cell_length > max_length:
+                            max_length = cell_length
+                except:
+                    pass
+
+    # Keep a maximum width cap so very long text won't stretch sheet
+            adjusted_width = min(max_length + 2, 50)
+            if adjusted_width > 0:
+                Sample_sheet.column_dimensions[col_letter].width = adjusted_width
+
 
         # ----------------------------
         # Save processed workbook back to BytesIO and offer for download
